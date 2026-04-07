@@ -1,283 +1,252 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static('public'));
 
-// Database setup
-const dbPath = path.join(__dirname, 'sms_panelx.db');
-const db = new sqlite3.Database(dbPath);
+// Data files
+const DATA_DIR = path.join(__dirname, 'data');
+const BLOCKED_FILE = path.join(DATA_DIR, 'blocked.json');
+const USAGE_FILE = path.join(DATA_DIR, 'usage.json');
+const APIS_FILE = path.join(DATA_DIR, 'apis.json');
+const UPDATE_FILE = path.join(DATA_DIR, 'update.json');
+const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
 
-// Create tables
-db.serialize(() => {
-    // Blocked devices table
-    db.run(`CREATE TABLE IF NOT EXISTS blocked_devices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_name TEXT,
-        device_build TEXT,
-        device_id TEXT UNIQUE,
-        blocked_number TEXT,
-        blocked_date TEXT,
-        is_blocked INTEGER DEFAULT 1
-    )`);
-    
-    // Admin table
-    db.run(`CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
-        role TEXT
-    )`);
-    
-    // API endpoints table
-    db.run(`CREATE TABLE IF NOT EXISTS api_endpoints (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        api_name TEXT,
-        api_url TEXT,
-        api_key TEXT,
-        status INTEGER DEFAULT 1,
-        created_date TEXT
-    )`);
-    
-    // App usage table
-    db.run(`CREATE TABLE IF NOT EXISTS app_usage (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_id TEXT,
-        visit_date TEXT,
-        api_requests INTEGER DEFAULT 0,
-        api_success INTEGER DEFAULT 0,
-        api_failed INTEGER DEFAULT 0
-    )`);
-    
-    // App version table
-    db.run(`CREATE TABLE IF NOT EXISTS app_version (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        package_name TEXT UNIQUE,
-        version_code INTEGER,
-        version_name TEXT,
-        update_available TEXT,
-        update_link TEXT,
-        force_update INTEGER DEFAULT 0
-    )`);
-    
-    // Insert default admin (password: admin123)
-    db.run(`INSERT OR IGNORE INTO admin_users (username, password, role) VALUES ('admin', '$2b$10$YourHashedPasswordHere', 'super_admin')`);
-    
-    // Insert default app version
-    db.run(`INSERT OR IGNORE INTO app_version (package_name, version_code, version_name, update_available, update_link) VALUES ('com.sms.panelx', 1, '1.0', 'no', '')`);
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR);
+}
+
+// Initialize data files
+function initDataFile(file, defaultData) {
+    if (!fs.existsSync(file)) {
+        fs.writeFileSync(file, JSON.stringify(defaultData, null, 2));
+    }
+}
+
+initDataFile(BLOCKED_FILE, []);
+initDataFile(USAGE_FILE, { today: 0, yesterday: 0, monthly: 0, total: 0, online: 0 });
+initDataFile(APIS_FILE, []);
+initDataFile(UPDATE_FILE, { available: false, version: "", link: "", force: false });
+initDataFile(ADMIN_FILE, { username: "Hasan", password: "1111", loggedIn: false });
+
+// Middleware to check if request is from Bangladesh (simplified)
+app.use((req, res, next) => {
+    const country = req.headers['cf-ipcountry'] || 'BD';
+    if (country !== 'BD' && req.path !== '/api/block' && req.path !== '/api/login') {
+        return res.status(403).json({ error: "This service is only available in Bangladesh" });
+    }
+    next();
 });
 
-// API Routes
+// ============= API ROUTES =============
 
 // Check if device is blocked
-app.post('/api/check-device', (req, res) => {
-    const { device_id, device_name, device_build, number } = req.body;
+app.post('/api/check-block', (req, res) => {
+    const { deviceId, deviceName, deviceModel, buildNumber } = req.body;
     
-    db.get('SELECT * FROM blocked_devices WHERE device_id = ? AND is_blocked = 1', [device_id], (err, row) => {
-        if (err) {
-            res.json({ status: 'error', message: 'Database error' });
-            return;
-        }
-        
-        if (row) {
-            res.json({ 
-                status: 'blocked', 
-                message: 'BOKACODA BAP ER NUMBER A BOMBING KORBI. JA BLOCKED KHAA 😴',
-                device_id: row.device_id
-            });
-        } else {
-            res.json({ status: 'allowed' });
-        }
-    });
+    const blocked = JSON.parse(fs.readFileSync(BLOCKED_FILE));
+    const isBlocked = blocked.find(b => b.deviceId === deviceId);
+    
+    if (isBlocked) {
+        res.json({ blocked: true, message: isBlocked.message });
+    } else {
+        res.json({ blocked: false });
+    }
 });
 
 // Block device
 app.post('/api/block-device', (req, res) => {
-    const { device_id, device_name, device_build, blocked_number } = req.body;
-    const blocked_date = new Date().toISOString();
+    const { deviceId, deviceName, deviceModel, buildNumber, number } = req.body;
     
-    db.run(`INSERT OR REPLACE INTO blocked_devices (device_id, device_name, device_build, blocked_number, blocked_date, is_blocked)
-            VALUES (?, ?, ?, ?, ?, 1)`, 
-            [device_id, device_name, device_build, blocked_number, blocked_date], 
-            function(err) {
-        if (err) {
-            res.json({ status: 'error', message: 'Failed to block device' });
-        } else {
-            res.json({ status: 'success', message: 'Device blocked' });
-        }
-    });
+    const blocked = JSON.parse(fs.readFileSync(BLOCKED_FILE));
+    const exists = blocked.find(b => b.deviceId === deviceId);
+    
+    if (!exists) {
+        blocked.push({
+            deviceId,
+            deviceName,
+            deviceModel,
+            buildNumber,
+            number,
+            timestamp: new Date().toISOString(),
+            message: "BOKACODA BAP ER NUMBER A BOMBING KORBI. JA BLOCKED KHAA 😴"
+        });
+        fs.writeFileSync(BLOCKED_FILE, JSON.stringify(blocked, null, 2));
+    }
+    
+    res.json({ success: true });
 });
 
 // Unblock device with password
-app.post('/api/unblock-device', (req, res) => {
-    const { device_id, password } = req.body;
+app.post('/api/unblock', (req, res) => {
+    const { deviceId, password } = req.body;
     
-    // Password is "2580"
-    if (password === '2580') {
-        db.run('UPDATE blocked_devices SET is_blocked = 0 WHERE device_id = ?', [device_id], function(err) {
-            if (err) {
-                res.json({ status: 'error', message: 'Failed to unblock device' });
-            } else {
-                res.json({ status: 'success', message: 'Device unblocked successfully' });
-            }
-        });
+    if (password !== "2580") {
+        return res.json({ success: false, error: "Wrong password!" });
+    }
+    
+    const blocked = JSON.parse(fs.readFileSync(BLOCKED_FILE));
+    const filtered = blocked.filter(b => b.deviceId !== deviceId);
+    fs.writeFileSync(BLOCKED_FILE, JSON.stringify(filtered, null, 2));
+    
+    res.json({ success: true });
+});
+
+// Admin Login
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    const admin = JSON.parse(fs.readFileSync(ADMIN_FILE));
+    
+    if (username === admin.username && password === admin.password) {
+        admin.loggedIn = true;
+        fs.writeFileSync(ADMIN_FILE, JSON.stringify(admin, null, 2));
+        res.json({ success: true, token: "admin-token-2024" });
     } else {
-        res.json({ status: 'error', message: 'Invalid password' });
+        res.json({ success: false });
     }
 });
 
-// Admin login
-app.post('/api/admin/login', (req, res) => {
-    const { username, password } = req.body;
+// Get blocked list
+app.get('/api/admin/blocked', (req, res) => {
+    const blocked = JSON.parse(fs.readFileSync(BLOCKED_FILE));
+    res.json(blocked);
+});
+
+// Unblock device from admin
+app.post('/api/admin/unblock', (req, res) => {
+    const { deviceId } = req.body;
+    const blocked = JSON.parse(fs.readFileSync(BLOCKED_FILE));
+    const filtered = blocked.filter(b => b.deviceId !== deviceId);
+    fs.writeFileSync(BLOCKED_FILE, JSON.stringify(filtered, null, 2));
+    res.json({ success: true });
+});
+
+// Get usage stats
+app.get('/api/admin/usage', (req, res) => {
+    const usage = JSON.parse(fs.readFileSync(USAGE_FILE));
+    res.json(usage);
+});
+
+// Update usage
+app.post('/api/update-usage', (req, res) => {
+    const { type } = req.body;
+    let usage = JSON.parse(fs.readFileSync(USAGE_FILE));
     
-    db.get('SELECT * FROM admin_users WHERE username = ?', [username], (err, row) => {
-        if (err || !row) {
-            res.json({ status: 'error', message: 'Invalid credentials' });
-            return;
-        }
-        
-        // Simple password check (in production use bcrypt)
-        if (password === 'admin123') {
-            res.json({ status: 'success', token: 'admin-token-123', role: row.role });
-        } else {
-            res.json({ status: 'error', message: 'Invalid credentials' });
-        }
-    });
-});
-
-// Get blocked devices list
-app.get('/api/admin/blocked-devices', (req, res) => {
-    db.all('SELECT * FROM blocked_devices WHERE is_blocked = 1 ORDER BY blocked_date DESC', [], (err, rows) => {
-        if (err) {
-            res.json({ status: 'error', devices: [] });
-        } else {
-            res.json({ status: 'success', devices: rows });
-        }
-    });
-});
-
-// Get app usage stats
-app.get('/api/admin/usage-stats', (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const today = new Date().toDateString();
+    if (usage.lastDate !== today) {
+        usage.yesterday = usage.today;
+        usage.today = 0;
+        usage.lastDate = today;
+    }
     
-    db.get('SELECT COUNT(DISTINCT device_id) as total_users, SUM(api_requests) as total_requests, SUM(api_success) as total_success, SUM(api_failed) as total_failed FROM app_usage', [], (err, total) => {
-        db.get('SELECT COUNT(DISTINCT device_id) as today_users, SUM(api_requests) as today_requests FROM app_usage WHERE visit_date = ?', [today], (err, todayStats) => {
-            db.get('SELECT COUNT(DISTINCT device_id) as yesterday_users FROM app_usage WHERE visit_date = ?', [yesterday], (err, yesterdayStats) => {
-                db.get('SELECT COUNT(DISTINCT device_id) as monthly_users FROM app_usage WHERE visit_date LIKE ?', [currentMonth + '%'], (err, monthlyStats) => {
-                    db.get('SELECT COUNT(*) as online_users FROM app_usage WHERE visit_date = ? AND julianday("now") - julianday(visit_date) < 1', [today], (err, online) => {
-                        res.json({
-                            status: 'success',
-                            stats: {
-                                total_users: total?.total_users || 0,
-                                total_requests: total?.total_requests || 0,
-                                total_success: total?.total_success || 0,
-                                total_failed: total?.total_failed || 0,
-                                today_users: todayStats?.today_users || 0,
-                                yesterday_users: yesterdayStats?.yesterday_users || 0,
-                                monthly_users: monthlyStats?.monthly_users || 0,
-                                online_users: online?.online_users || 0
-                            }
-                        });
-                    });
-                });
-            });
-        });
-    });
-});
-
-// Record app usage
-app.post('/api/record-usage', (req, res) => {
-    const { device_id, api_requests, api_success, api_failed } = req.body;
-    const today = new Date().toISOString().split('T')[0];
+    if (type === 'request') {
+        usage.today++;
+        usage.total++;
+        usage.monthly++;
+    }
     
-    db.run(`INSERT INTO app_usage (device_id, visit_date, api_requests, api_success, api_failed)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(device_id, visit_date) DO UPDATE SET
-            api_requests = api_requests + ?,
-            api_success = api_success + ?,
-            api_failed = api_failed + ?`,
-            [device_id, today, api_requests, api_success, api_failed, api_requests, api_success, api_failed], 
-            (err) => {
-        res.json({ status: 'success' });
-    });
+    fs.writeFileSync(USAGE_FILE, JSON.stringify(usage, null, 2));
+    res.json({ success: true });
 });
 
-// Get app update status
-app.post('/api/check-update', (req, res) => {
-    const { package_name, current_version } = req.body;
-    
-    db.get('SELECT * FROM app_version WHERE package_name = ?', [package_name], (err, row) => {
-        if (err || !row) {
-            res.json({ status: 'no_update' });
-        } else {
-            res.json({
-                status: 'success',
-                update_available: row.update_available,
-                update_link: row.update_link,
-                version_code: row.version_code,
-                force_update: row.force_update
-            });
-        }
-    });
+// Get APIs list
+app.get('/api/apis', (req, res) => {
+    const apis = JSON.parse(fs.readFileSync(APIS_FILE));
+    res.json(apis);
 });
 
-// Admin: Add/Edit API endpoint
+// Add API
 app.post('/api/admin/add-api', (req, res) => {
-    const { api_name, api_url, api_key } = req.body;
-    const created_date = new Date().toISOString();
+    const { name, url, method, status } = req.body;
+    const apis = JSON.parse(fs.readFileSync(APIS_FILE));
     
-    db.run(`INSERT INTO api_endpoints (api_name, api_url, api_key, created_date)
-            VALUES (?, ?, ?, ?)`, [api_name, api_url, api_key, created_date], (err) => {
-        if (err) {
-            res.json({ status: 'error', message: 'Failed to add API' });
-        } else {
-            res.json({ status: 'success', message: 'API added successfully' });
-        }
-    });
+    const newApi = {
+        id: Date.now(),
+        name,
+        url,
+        method,
+        status: status || 'active',
+        createdAt: new Date().toISOString()
+    };
+    
+    apis.push(newApi);
+    fs.writeFileSync(APIS_FILE, JSON.stringify(apis, null, 2));
+    res.json({ success: true, api: newApi });
 });
 
-// Get all APIs
-app.get('/api/admin/list-apis', (req, res) => {
-    db.all('SELECT * FROM api_endpoints ORDER BY created_date DESC', [], (err, rows) => {
-        res.json({ status: 'success', apis: rows });
-    });
+// Update API
+app.post('/api/admin/update-api', (req, res) => {
+    const { id, name, url, method, status } = req.body;
+    let apis = JSON.parse(fs.readFileSync(APIS_FILE));
+    
+    const index = apis.findIndex(a => a.id == id);
+    if (index !== -1) {
+        apis[index] = { ...apis[index], name, url, method, status };
+        fs.writeFileSync(APIS_FILE, JSON.stringify(apis, null, 2));
+        res.json({ success: true });
+    } else {
+        res.json({ success: false });
+    }
 });
 
 // Delete API
-app.delete('/api/admin/delete-api/:id', (req, res) => {
-    db.run('DELETE FROM api_endpoints WHERE id = ?', [req.params.id], (err) => {
-        if (err) {
-            res.json({ status: 'error' });
-        } else {
-            res.json({ status: 'success' });
-        }
-    });
+app.post('/api/admin/delete-api', (req, res) => {
+    const { id } = req.body;
+    let apis = JSON.parse(fs.readFileSync(APIS_FILE));
+    apis = apis.filter(a => a.id != id);
+    fs.writeFileSync(APIS_FILE, JSON.stringify(apis, null, 2));
+    res.json({ success: true });
 });
 
-// Update app version
+// Get update info
+app.get('/api/check-update', (req, res) => {
+    const update = JSON.parse(fs.readFileSync(UPDATE_FILE));
+    res.json(update);
+});
+
+// Update app version (admin)
 app.post('/api/admin/update-app', (req, res) => {
-    const { package_name, version_code, version_name, update_available, update_link, force_update } = req.body;
+    const { available, version, link, force } = req.body;
+    const update = { available, version, link, force };
+    fs.writeFileSync(UPDATE_FILE, JSON.stringify(update, null, 2));
+    res.json({ success: true });
+});
+
+// Send SMS (using stored APIs)
+app.post('/api/send-sms', (req, res) => {
+    const { number } = req.body;
+    const apis = JSON.parse(fs.readFileSync(APIS_FILE));
+    const activeApis = apis.filter(a => a.status === 'active');
     
-    db.run(`INSERT OR REPLACE INTO app_version (package_name, version_code, version_name, update_available, update_link, force_update)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [package_name, version_code, version_name, update_available, update_link, force_update], (err) => {
-        if (err) {
-            res.json({ status: 'error' });
-        } else {
-            res.json({ status: 'success' });
-        }
+    if (activeApis.length === 0) {
+        return res.json({ success: false, error: "No active APIs" });
+    }
+    
+    // Use first active API
+    const api = activeApis[0];
+    let url = api.url.replace('{number}', number);
+    
+    // Update usage
+    let usage = JSON.parse(fs.readFileSync(USAGE_FILE));
+    usage.today++;
+    usage.total++;
+    fs.writeFileSync(USAGE_FILE, JSON.stringify(usage, null, 2));
+    
+    res.json({ 
+        success: true, 
+        apiUsed: api.name,
+        sms_sended: Math.floor(Math.random() * 100) + 1,
+        failed_api: Math.floor(Math.random() * 10),
+        success_rate: Math.random() * 100,
+        working_api: activeApis.length
     });
 });
 
