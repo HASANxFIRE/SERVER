@@ -4,383 +4,359 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel X SMS - Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #FF6B6B, #FF8E53, #FF4757);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Share Tech', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            font-size: 48px;
-            text-shadow: 0 0 20px rgba(0,0,0,0.5);
-            margin-bottom: 10px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: rgba(0,0,0,0.8);
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            color: white;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-        }
-        
-        .stat-card h3 {
-            font-size: 14px;
-            margin-bottom: 10px;
-            opacity: 0.8;
-        }
-        
-        .stat-card .value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #00FF88;
-        }
-        
-        .section {
-            background: rgba(0,0,0,0.8);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .section h2 {
-            color: #FF6B6B;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            color: white;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        th {
-            background: rgba(255,107,107,0.3);
-            color: #FF6B6B;
-        }
-        
-        .btn {
-            background: linear-gradient(135deg, #FF6B6B, #FF4757);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 5px;
-        }
-        
-        .btn:hover {
-            transform: scale(1.05);
-        }
-        
-        .input-group {
-            margin-bottom: 15px;
-        }
-        
-        .input-group label {
-            display: block;
-            color: white;
-            margin-bottom: 5px;
-        }
-        
-        .input-group input, .input-group textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #FF6B6B;
-            background: rgba(0,0,0,0.5);
-            color: white;
-        }
-        
-        .login-form {
-            max-width: 400px;
-            margin: 100px auto;
-            background: rgba(0,0,0,0.9);
-            padding: 40px;
             border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
-        .login-form h2 {
-            color: white;
-            text-align: center;
-            margin-bottom: 30px;
+        .glow {
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
-        
-        .hidden {
-            display: none;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .online-dot {
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
-<body>
-    <div id="loginDiv" class="login-form">
-        <h2>🔐 Admin Login</h2>
-        <div class="input-group">
-            <label>Username</label>
-            <input type="text" id="username" placeholder="Enter username">
-        </div>
-        <div class="input-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="Enter password">
-        </div>
-        <button class="btn" onclick="login()" style="width: 100%;">Login</button>
-    </div>
-    
-    <div id="adminPanel" class="container hidden">
-        <div class="header">
-            <h1>PANEL X SMS - ADMIN PANEL</h1>
-            <p>Advanced Control System</p>
-        </div>
-        
-        <div class="stats-grid" id="statsGrid">
-            <!-- Stats will be loaded here -->
-        </div>
-        
-        <div class="section">
-            <h2>🚫 Blocked Devices</h2>
-            <div style="overflow-x: auto;">
-                <table id="blockedTable">
-                    <thead>
-                        <tr><th>Device Name</th><th>Device ID</th><th>Blocked Number</th><th>Date</th></tr>
-                    </thead>
-                    <tbody id="blockedList"></tbody>
-                </table>
+<body class="font-['Share_Tech']">
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass-card p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl text-white glow mb-2">PANEL X SMS</h1>
+                <p class="text-gray-300">Admin Panel Login</p>
             </div>
-        </div>
-        
-        <div class="section">
-            <h2>📡 API Management</h2>
-            <div class="input-group">
-                <label>API Name</label>
-                <input type="text" id="apiName" placeholder="e.g., Primary API">
-            </div>
-            <div class="input-group">
-                <label>API URL</label>
-                <input type="text" id="apiUrl" placeholder="https://example.com/api">
-            </div>
-            <div class="input-group">
-                <label>API Key (Optional)</label>
-                <input type="text" id="apiKey" placeholder="API Key">
-            </div>
-            <button class="btn" onclick="addApi()">➕ Add API</button>
-            
-            <div style="margin-top: 20px;">
-                <table id="apiTable">
-                    <thead><tr><th>Name</th><th>URL</th><th>Status</th><th>Action</th></tr></thead>
-                    <tbody id="apiList"></tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h2>🔄 App Update Control</h2>
-            <div class="input-group">
-                <label>Package Name</label>
-                <input type="text" id="pkgName" value="com.sms.panelx">
-            </div>
-            <div class="input-group">
-                <label>Version Code</label>
-                <input type="number" id="versionCode" value="1">
-            </div>
-            <div class="input-group">
-                <label>Version Name</label>
-                <input type="text" id="versionName" value="1.0">
-            </div>
-            <div class="input-group">
-                <label>Update Available (yes/no)</label>
-                <select id="updateAvailable">
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>Update Link</label>
-                <input type="text" id="updateLink" placeholder="https://example.com/app.apk">
-            </div>
-            <div class="input-group">
-                <label>Force Update (0/1)</label>
-                <select id="forceUpdate">
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                </select>
-            </div>
-            <button class="btn" onclick="updateApp()">💾 Save Update Settings</button>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <input type="text" id="username" placeholder="Username" class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white">
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="password" placeholder="Password" class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:border-white">
+                </div>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-bold hover:shadow-lg transition">Login</button>
+            </form>
         </div>
     </div>
-    
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="hidden min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl text-white glow">PANEL X SMS - ADMIN</h1>
+                <button onclick="logout()" class="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30">Logout</button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="glass-card p-6">
+                    <div class="text-gray-300 text-sm">TODAY USERS</div>
+                    <div class="text-3xl text-white font-bold" id="todayUsers">0</div>
+                </div>
+                <div class="glass-card p-6">
+                    <div class="text-gray-300 text-sm">YESTERDAY</div>
+                    <div class="text-3xl text-white font-bold" id="yesterdayUsers">0</div>
+                </div>
+                <div class="glass-card p-6">
+                    <div class="text-gray-300 text-sm">MONTHLY</div>
+                    <div class="text-3xl text-white font-bold" id="monthlyUsers">0</div>
+                </div>
+                <div class="glass-card p-6">
+                    <div class="text-gray-300 text-sm">TOTAL</div>
+                    <div class="text-3xl text-white font-bold" id="totalUsers">0</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-4 mb-6 border-b border-white/20">
+                <button onclick="showTab('blocked')" class="tab-btn px-6 py-3 text-white font-bold border-b-2 border-transparent hover:border-pink-500" id="tabBlocked">Blocked Devices</button>
+                <button onclick="showTab('apis')" class="tab-btn px-6 py-3 text-white font-bold border-b-2 border-transparent hover:border-pink-500" id="tabApis">SMS APIs</button>
+                <button onclick="showTab('update')" class="tab-btn px-6 py-3 text-white font-bold border-b-2 border-transparent hover:border-pink-500" id="tabUpdate">App Update</button>
+            </div>
+
+            <!-- Blocked Devices Tab -->
+            <div id="blockedTab" class="glass-card p-6">
+                <h2 class="text-2xl text-white mb-4">Blocked Devices</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-white">
+                        <thead class="border-b border-white/20">
+                            <tr>
+                                <th class="text-left py-3">Device Name</th>
+                                <th class="text-left py-3">Model</th>
+                                <th class="text-left py-3">Build Number</th>
+                                <th class="text-left py-3">Number</th>
+                                <th class="text-left py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blockedList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- APIs Tab -->
+            <div id="apisTab" class="hidden glass-card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl text-white">SMS APIs</h2>
+                    <button onclick="showAddApiModal()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">+ Add API</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-white">
+                        <thead class="border-b border-white/20">
+                            <tr>
+                                <th class="text-left py-3">Name</th>
+                                <th class="text-left py-3">URL</th>
+                                <th class="text-left py-3">Method</th>
+                                <th class="text-left py-3">Status</th>
+                                <th class="text-left py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apisList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Update Tab -->
+            <div id="updateTab" class="hidden glass-card p-6">
+                <h2 class="text-2xl text-white mb-4">App Update Control</h2>
+                <form id="updateForm" class="space-y-4">
+                    <div>
+                        <label class="text-white block mb-2">Update Available</label>
+                        <select id="updateAvailable" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-white block mb-2">Version</label>
+                        <input type="text" id="updateVersion" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30" placeholder="1.0.0">
+                    </div>
+                    <div>
+                        <label class="text-white block mb-2">Update Link</label>
+                        <input type="text" id="updateLink" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30" placeholder="https://...">
+                    </div>
+                    <div>
+                        <label class="text-white block mb-2">Force Update</label>
+                        <select id="updateForce" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Update Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add API Modal -->
+    <div id="addApiModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="glass-card p-8 w-full max-w-md">
+            <h2 class="text-2xl text-white mb-4">Add New API</h2>
+            <form id="addApiForm">
+                <div class="mb-4">
+                    <input type="text" id="apiName" placeholder="API Name" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="apiUrl" placeholder="API URL (use {number} for phone number)" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                </div>
+                <div class="mb-4">
+                    <select id="apiMethod" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <select id="apiStatus" class="w-full px-4 py-2 rounded-lg bg-white/20 text-white border border-white/30">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 py-2 bg-green-500 text-white rounded-lg">Save</button>
+                    <button type="button" onclick="closeAddApiModal()" class="flex-1 py-2 bg-gray-500 text-white rounded-lg">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        let token = '';
-        let serverUrl = window.location.origin;
-        
-        function login() {
+        let currentTab = 'blocked';
+        let apiUrl = window.location.origin;
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            fetch(serverUrl + '/api/admin/login', {
+            const res = await fetch('/api/admin/login', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username, password})
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    token = data.token;
-                    document.getElementById('loginDiv').classList.add('hidden');
-                    document.getElementById('adminPanel').classList.remove('hidden');
-                    loadStats();
-                    loadBlockedDevices();
-                    loadApis();
-                } else {
-                    alert('Invalid credentials!');
-                }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
             });
-        }
-        
-        function loadStats() {
-            fetch(serverUrl + '/api/admin/usage-stats')
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    const stats = data.stats;
-                    document.getElementById('statsGrid').innerHTML = `
-                        <div class="stat-card"><h3>Total Users</h3><div class="value">${stats.total_users}</div></div>
-                        <div class="stat-card"><h3>Today Users</h3><div class="value">${stats.today_users}</div></div>
-                        <div class="stat-card"><h3>Yesterday Users</h3><div class="value">${stats.yesterday_users}</div></div>
-                        <div class="stat-card"><h3>Monthly Users</h3><div class="value">${stats.monthly_users}</div></div>
-                        <div class="stat-card"><h3>Online Users</h3><div class="value">${stats.online_users}</div></div>
-                        <div class="stat-card"><h3>Total Requests</h3><div class="value">${stats.total_requests}</div></div>
-                        <div class="stat-card"><h3>Success Rate</h3><div class="value">${stats.total_requests > 0 ? ((stats.total_success/stats.total_requests)*100).toFixed(1) : 0}%</div></div>
-                    `;
-                }
-            });
-        }
-        
-        function loadBlockedDevices() {
-            fetch(serverUrl + '/api/admin/blocked-devices')
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    const html = data.devices.map(device => `
-                        <tr>
-                            <td>${device.device_name}</td>
-                            <td>${device.device_id}</td>
-                            <td>${device.blocked_number}</td>
-                            <td>${new Date(device.blocked_date).toLocaleString()}</td>
-                        </tr>
-                    `).join('');
-                    document.getElementById('blockedList').innerHTML = html;
-                }
-            });
-        }
-        
-        function loadApis() {
-            fetch(serverUrl + '/api/admin/list-apis')
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    const html = data.apis.map(api => `
-                        <tr>
-                            <td>${api.api_name}</td>
-                            <td>${api.api_url}</td>
-                            <td><span style="color: #00FF88">Active</span></td>
-                            <td><button class="btn" onclick="deleteApi(${api.id})">Delete</button></td>
-                        </tr>
-                    `).join('');
-                    document.getElementById('apiList').innerHTML = html;
-                }
-            });
-        }
-        
-        function addApi() {
-            const api_name = document.getElementById('apiName').value;
-            const api_url = document.getElementById('apiUrl').value;
-            const api_key = document.getElementById('apiKey').value;
+            const data = await res.json();
             
-            fetch(serverUrl + '/api/admin/add-api', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({api_name, api_url, api_key})
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    alert('API added successfully!');
-                    loadApis();
-                    document.getElementById('apiName').value = '';
-                    document.getElementById('apiUrl').value = '';
-                    document.getElementById('apiKey').value = '';
-                }
-            });
+            if (data.success) {
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('dashboardPage').classList.remove('hidden');
+                loadDashboard();
+            } else {
+                alert('Invalid credentials!');
+            }
+        });
+
+        async function loadDashboard() {
+            await loadStats();
+            await loadBlockedDevices();
+            await loadApis();
+            await loadUpdateSettings();
         }
-        
-        function deleteApi(id) {
-            if(confirm('Delete this API?')) {
-                fetch(serverUrl + '/api/admin/delete-api/' + id, {method: 'DELETE'})
-                .then(() => loadApis());
+
+        async function loadStats() {
+            const res = await fetch('/api/admin/usage');
+            const data = await res.json();
+            document.getElementById('todayUsers').textContent = data.today || 0;
+            document.getElementById('yesterdayUsers').textContent = data.yesterday || 0;
+            document.getElementById('monthlyUsers').textContent = data.monthly || 0;
+            document.getElementById('totalUsers').textContent = data.total || 0;
+        }
+
+        async function loadBlockedDevices() {
+            const res = await fetch('/api/admin/blocked');
+            const data = await res.json();
+            const tbody = document.getElementById('blockedList');
+            tbody.innerHTML = data.map(device => `
+                <tr class="border-b border-white/10">
+                    <td class="py-3">${device.deviceName || 'Unknown'}</td>
+                    <td class="py-3">${device.deviceModel || 'Unknown'}</td>
+                    <td class="py-3">${device.buildNumber || 'Unknown'}</td>
+                    <td class="py-3">${device.number || 'Unknown'}</td>
+                    <td class="py-3">
+                        <button onclick="unblockDevice('${device.deviceId}')" class="px-3 py-1 bg-green-500 text-white rounded text-sm">Unblock</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadApis() {
+            const res = await fetch('/api/apis');
+            const data = await res.json();
+            const tbody = document.getElementById('apisList');
+            tbody.innerHTML = data.map(api => `
+                <tr class="border-b border-white/10">
+                    <td class="py-3">${api.name}</td>
+                    <td class="py-3">${api.url}</td>
+                    <td class="py-3">${api.method}</td>
+                    <td class="py-3">
+                        <span class="px-2 py-1 rounded text-xs ${api.status === 'active' ? 'bg-green-500' : 'bg-red-500'}">${api.status}</span>
+                    </td>
+                    <td class="py-3">
+                        <button onclick="editApi(${api.id})" class="px-2 py-1 bg-blue-500 text-white rounded text-sm mr-2">Edit</button>
+                        <button onclick="deleteApi(${api.id})" class="px-2 py-1 bg-red-500 text-white rounded text-sm">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUpdateSettings() {
+            const res = await fetch('/api/check-update');
+            const data = await res.json();
+            document.getElementById('updateAvailable').value = data.available;
+            document.getElementById('updateVersion').value = data.version || '';
+            document.getElementById('updateLink').value = data.link || '';
+            document.getElementById('updateForce').value = data.force || 'false';
+        }
+
+        async function unblockDevice(deviceId) {
+            if (confirm('Unblock this device?')) {
+                await fetch('/api/admin/unblock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId })
+                });
+                loadBlockedDevices();
             }
         }
-        
-        function updateApp() {
-            const data = {
-                package_name: document.getElementById('pkgName').value,
-                version_code: parseInt(document.getElementById('versionCode').value),
-                version_name: document.getElementById('versionName').value,
-                update_available: document.getElementById('updateAvailable').value,
-                update_link: document.getElementById('updateLink').value,
-                force_update: parseInt(document.getElementById('forceUpdate').value)
+
+        async function deleteApi(id) {
+            if (confirm('Delete this API?')) {
+                await fetch('/api/admin/delete-api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                loadApis();
+            }
+        }
+
+        function showAddApiModal() {
+            document.getElementById('addApiModal').classList.remove('hidden');
+        }
+
+        function closeAddApiModal() {
+            document.getElementById('addApiModal').classList.add('hidden');
+        }
+
+        document.getElementById('addApiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const api = {
+                name: document.getElementById('apiName').value,
+                url: document.getElementById('apiUrl').value,
+                method: document.getElementById('apiMethod').value,
+                status: document.getElementById('apiStatus').value
             };
             
-            fetch(serverUrl + '/api/admin/update-app', {
+            await fetch('/api/admin/add-api', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    alert('App update settings saved!');
-                }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(api)
             });
+            
+            closeAddApiModal();
+            loadApis();
+        });
+
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const update = {
+                available: document.getElementById('updateAvailable').value === 'true',
+                version: document.getElementById('updateVersion').value,
+                link: document.getElementById('updateLink').value,
+                force: document.getElementById('updateForce').value === 'true'
+            };
+            
+            await fetch('/api/admin/update-app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(update)
+            });
+            
+            alert('Update settings saved!');
+        });
+
+        function showTab(tab) {
+            currentTab = tab;
+            document.getElementById('blockedTab').classList.add('hidden');
+            document.getElementById('apisTab').classList.add('hidden');
+            document.getElementById('updateTab').classList.add('hidden');
+            
+            document.getElementById(`${tab}Tab`).classList.remove('hidden');
         }
-        
-        setInterval(() => {
-            if(token) loadStats();
-        }, 30000);
+
+        function logout() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('dashboardPage').classList.add('hidden');
+        }
     </script>
 </body>
 </html>
